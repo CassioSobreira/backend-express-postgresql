@@ -1,0 +1,26 @@
+{
+  "name": "back-express-fullstack",
+  "version": "0.0.1",
+  "description": "",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start:app": "nodemon src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CassioSobreira/back-express-FullStack.git"
+  },
+  "author": "",
+  "bugs": {
+    "url": "https://github.com/CassioSobreira/back-express-FullStack/issues"
+  },
+  "homepage": "https://github.com/CassioSobreira/back-express-FullStack#readme",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
+  }
+}
