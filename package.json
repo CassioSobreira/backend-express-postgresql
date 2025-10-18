@@ -5,7 +5,9 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "start:app": "nodemon src/index.js"
+    "start:app": "nodemon src/index.js",
+    "start:database": "docker compose up -d",
+    "stop:database": "docker compose down"
   },
   "repository": {
     "type": "git",
@@ -18,7 +20,8 @@
   "homepage": "https://github.com/CassioSobreira/back-express-FullStack#readme",
   "dependencies": {
     "dotenv": "^17.2.3",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "mongoose": "^8.19.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
