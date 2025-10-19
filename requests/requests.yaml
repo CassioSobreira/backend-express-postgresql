@@ -28,7 +28,7 @@ resources:
           "email": "valido@exemplo.com",
           "password": "password123"
         }
-    headers: # --- ADICIONADO AQUI ---
+    headers: 
       - name: Content-Type
         value: application/json
     _type: request
@@ -45,7 +45,7 @@ resources:
           "email": "valido@exemplo.com",
           "password": "password456"
         }
-    headers: # --- ADICIONADO AQUI ---
+    headers: 
       - name: Content-Type
         value: application/json
     _type: request
@@ -62,7 +62,7 @@ resources:
           "email": "senha.curta@exemplo.com",
           "password": "123"
         }
-    headers: # --- ADICIONADO AQUI ---
+    headers: 
       - name: Content-Type
         value: application/json
     _type: request
@@ -79,7 +79,7 @@ resources:
           "email": "email-invalido",
           "password": "password123"
         }
-    headers: # --- ADICIONADO AQUI ---
+    headers: 
       - name: Content-Type
         value: application/json
     _type: request
@@ -95,7 +95,7 @@ resources:
         	"email": "malformatado@exemplo.com",
         	"password": "password123"
         }
-    headers: # --- ADICIONADO AQUI ---
+    headers: 
       - name: Content-Type
         value: application/json
     _type: request
@@ -115,7 +115,7 @@ resources:
           "email": "valido@exemplo.com",
           "password": "password123"
         }
-    headers: # --- ADICIONADO AQUI ---
+    headers: 
       - name: Content-Type
         value: application/json
     _type: request
@@ -131,7 +131,7 @@ resources:
           "email": "valido@exemplo.com",
           "password": "senhaerrada"
         }
-    headers: # --- ADICIONADO AQUI ---
+    headers: 
       - name: Content-Type
         value: application/json
     _type: request
@@ -147,7 +147,7 @@ resources:
         	"email": "naoexiste@exemplo.com",
         	"password": "password123"
         }
-    headers: # --- ADICIONADO AQUI ---
+    headers: 
       - name: Content-Type
         value: application/json
     _type: request
@@ -162,7 +162,7 @@ resources:
         {
         	"email": "valido@exemplo.com"
         }
-    headers: # --- ADICIONADO AQUI ---
+    headers: 
       - name: Content-Type
         value: application/json
     _type: request
@@ -200,5 +200,11 @@ resources:
     name: Base Environment
     data:
       baseUrl: http://localhost:3000/api/auth
+    _type: environment
+  - _id: env_2
+    parentId: wrk_1
+    name: Production (Custom Domain) 
+    data:
+      baseUrl: https://back-express.cassiovinicius.dev/api/auth 
     _type: environment
 
