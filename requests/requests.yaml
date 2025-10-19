@@ -28,6 +28,9 @@ resources:
           "email": "valido@exemplo.com",
           "password": "password123"
         }
+    headers: # --- ADICIONADO AQUI ---
+      - name: Content-Type
+        value: application/json
     _type: request
   - _id: req_register_email_exists
     parentId: fld_register
@@ -42,6 +45,9 @@ resources:
           "email": "valido@exemplo.com",
           "password": "password456"
         }
+    headers: # --- ADICIONADO AQUI ---
+      - name: Content-Type
+        value: application/json
     _type: request
   - _id: req_register_short_password
     parentId: fld_register
@@ -56,6 +62,9 @@ resources:
           "email": "senha.curta@exemplo.com",
           "password": "123"
         }
+    headers: # --- ADICIONADO AQUI ---
+      - name: Content-Type
+        value: application/json
     _type: request
   - _id: req_register_invalid_email
     parentId: fld_register
@@ -70,6 +79,9 @@ resources:
           "email": "email-invalido",
           "password": "password123"
         }
+    headers: # --- ADICIONADO AQUI ---
+      - name: Content-Type
+        value: application/json
     _type: request
   - _id: req_register_bad_request
     parentId: fld_register
@@ -83,6 +95,9 @@ resources:
         	"email": "malformatado@exemplo.com",
         	"password": "password123"
         }
+    headers: # --- ADICIONADO AQUI ---
+      - name: Content-Type
+        value: application/json
     _type: request
   - _id: fld_login
     parentId: wrk_1
@@ -100,6 +115,9 @@ resources:
           "email": "valido@exemplo.com",
           "password": "password123"
         }
+    headers: # --- ADICIONADO AQUI ---
+      - name: Content-Type
+        value: application/json
     _type: request
   - _id: req_login_wrong_password
     parentId: fld_login
@@ -113,6 +131,9 @@ resources:
           "email": "valido@exemplo.com",
           "password": "senhaerrada"
         }
+    headers: # --- ADICIONADO AQUI ---
+      - name: Content-Type
+        value: application/json
     _type: request
   - _id: req_login_invalid_email
     parentId: fld_login
@@ -126,6 +147,9 @@ resources:
         	"email": "naoexiste@exemplo.com",
         	"password": "password123"
         }
+    headers: # --- ADICIONADO AQUI ---
+      - name: Content-Type
+        value: application/json
     _type: request
   - _id: req_login_bad_request
     parentId: fld_login
@@ -138,6 +162,9 @@ resources:
         {
         	"email": "valido@exemplo.com"
         }
+    headers: # --- ADICIONADO AQUI ---
+      - name: Content-Type
+        value: application/json
     _type: request
   - _id: fld_protected
     parentId: wrk_1
@@ -174,3 +201,4 @@ resources:
     data:
       baseUrl: http://localhost:3000/api/auth
     _type: environment
+
