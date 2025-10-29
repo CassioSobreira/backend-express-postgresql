@@ -54,7 +54,7 @@ export const loginUser = async (credentials: any): Promise<{ user: UserResponse;
 
     if (!email || !password) {
         const error: any = new Error('E-mail e palavra-passe são obrigatórios.');
-        error.status = 400; // Bad Request
+        error.status = 400; 
         throw error;
     }
 
@@ -76,7 +76,7 @@ export const loginUser = async (credentials: any): Promise<{ user: UserResponse;
         if (!isMatch) {
             console.warn(`[SERVICE] Tentativa de login falhada: Password incorreta para ${email}.`);
             const error: any = new Error('Credenciais inválidas.');
-            error.status = 401; // Unauthorized
+            error.status = 401; 
             throw error;
         }
          console.log(`>>> [SERVICE] Passwords correspondem para utilizador ID: ${user.id}.`);

@@ -10,9 +10,8 @@ interface AuthRequest extends Request {
 
 const handleServiceError = (error: any, res: Response, action: string) => {
   console.error(`[CONTROLLER] Erro ao ${action} filme: ${error.message}`);
-  
+
   if (error.name === 'SequelizeValidationError') {
-    
     const details = error.errors.map((e: any) => `${e.path}: ${e.message}`).join(', ');
     return res.status(400).json({ message: 'Dados inválidos.', details: details });
   }
@@ -24,15 +23,44 @@ const handleServiceError = (error: any, res: Response, action: string) => {
   return res.status(error.status || 500).json({ message: error.message || 'Erro interno do servidor.' });
 };
 
+const getUserId = (req: AuthRequest, res: Response): number | null => {
+  const userId = typeof req.userId === 'string' ? parseInt(req.userId, 10) : req.userId;
+  if (!userId || isNaN(userId)) {
+    res.status(401).json({ message: 'ID do utilizador inválido ou não encontrado no token.' });
+    return null;
+  }
+  return userId;
+};
+
+
+const getValidMovieId = (req: Request, res: Response): number | null => {
+  const movieIdString = req.params.id;
+
+  const isNumeric = /^\d+$/.test(movieIdString); 
+
+  if (!isNumeric) {
+      console.warn(`[CONTROLLER] Tentativa de usar ID inválido (não numérico): "${movieIdString}"`);
+      res.status(400).json({ message: 'O ID do filme fornecido na URL deve ser um número inteiro.' });
+      return null;
+  }
+
+  const movieId = parseInt(movieIdString, 10);
+
+  if (isNaN(movieId) || movieId <= 0) { 
+      console.warn(`[CONTROLLER] Tentativa de usar ID inválido (NaN ou <=0): "${movieIdString}"`);
+      res.status(400).json({ message: 'O ID do filme fornecido na URL é inválido.' });
+      return null;
+  }
+  
+  return movieId;
+};
+
 
 export const create = async (req: AuthRequest, res: Response) => {
   try {
-    
-    const userId = typeof req.userId === 'string' ? parseInt(req.userId, 10) : req.userId;
-    if (!userId || isNaN(userId)) {
-      return res.status(401).json({ message: 'ID do utilizador inválido ou não encontrado no token.' });
-    }
-    
+    const userId = getUserId(req, res);
+    if (!userId) return; 
+
     if (!req.body.title) {
         return res.status(400).json({ message: 'O título do filme é obrigatório.' });
     }
@@ -44,13 +72,11 @@ export const create = async (req: AuthRequest, res: Response) => {
   }
 };
 
-
 export const getAll = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = typeof req.userId === 'string' ? parseInt(req.userId, 10) : req.userId;
-     if (!userId || isNaN(userId)) {
-      return res.status(401).json({ message: 'ID do utilizador inválido ou não encontrado no token.' });
-    }
+    const userId = getUserId(req, res);
+    if (!userId) return;
+
     const filters = req.query;
     const movies = await movieService.getAllMovies(userId, filters);
     res.status(200).json(movies);
@@ -62,22 +88,13 @@ export const getAll = async (req: AuthRequest, res: Response) => {
 
 export const getById = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = typeof req.userId === 'string' ? parseInt(req.userId, 10) : req.userId;
-    if (!userId || isNaN(userId)) {
-      return res.status(401).json({ message: 'ID do utilizador inválido ou não encontrado no token.' });
-    }
+    const userId = getUserId(req, res);
+    if (!userId) return;
 
-
-    const movieIdString = req.params.id;
-    const movieId = parseInt(movieIdString, 10); 
-
-    if (isNaN(movieId) || movieId <= 0) { 
-        console.warn(`[CONTROLLER] Tentativa de buscar filme com ID inválido: "${movieIdString}"`);
-        return res.status(400).json({ message: 'O ID do filme fornecido na URL é inválido.' });
-    }
-
+    const movieId = getValidMovieId(req, res); 
+    if (!movieId) return; 
     console.log(`[CONTROLLER] Buscando filme ID: ${movieId} para utilizador ID: ${userId}`);
-    const movie = await movieService.getMovieById(movieId, userId); 
+    const movie = await movieService.getMovieById(movieId, userId);
     res.status(200).json(movie);
   } catch (error: any) {
     handleServiceError(error, res, `obter filme por ID ${req.params.id}`);
@@ -87,20 +104,13 @@ export const getById = async (req: AuthRequest, res: Response) => {
 
 export const update = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = typeof req.userId === 'string' ? parseInt(req.userId, 10) : req.userId;
-    if (!userId || isNaN(userId)) {
-      return res.status(401).json({ message: 'ID do utilizador inválido ou não encontrado no token.' });
-    }
+    const userId = getUserId(req, res);
+    if (!userId) return;
 
-    
-    const movieIdString = req.params.id;
-    const movieId = parseInt(movieIdString, 10);
-    if (isNaN(movieId) || movieId <= 0) {
-        console.warn(`[CONTROLLER] Tentativa de atualizar filme com ID inválido: "${movieIdString}"`);
-        return res.status(400).json({ message: 'O ID do filme fornecido na URL é inválido.' });
-    }
+    const movieId = getValidMovieId(req, res); 
+    if (!movieId) return;
 
-    const { user, ...updateData } = req.body; 
+    const { user, ...updateData } = req.body;
     if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: 'Nenhum dado fornecido para atualização.' });
     }
@@ -116,18 +126,11 @@ export const update = async (req: AuthRequest, res: Response) => {
 
 export const remove = async (req: AuthRequest, res: Response) => {
    try {
-    const userId = typeof req.userId === 'string' ? parseInt(req.userId, 10) : req.userId;
-     if (!userId || isNaN(userId)) {
-      return res.status(401).json({ message: 'ID do utilizador inválido ou não encontrado no token.' });
-    }
+    const userId = getUserId(req, res);
+    if (!userId) return;
 
-   
-    const movieIdString = req.params.id;
-    const movieId = parseInt(movieIdString, 10);
-     if (isNaN(movieId) || movieId <= 0) {
-        console.warn(`[CONTROLLER] Tentativa de deletar filme com ID inválido: "${movieIdString}"`);
-        return res.status(400).json({ message: 'O ID do filme fornecido na URL é inválido.' });
-    }
+    const movieId = getValidMovieId(req, res); 
+    if (!movieId) return;
 
     console.log(`[CONTROLLER] Deletando filme ID: ${movieId} para utilizador ID: ${userId}`);
     await movieService.deleteMovie(movieId, userId);

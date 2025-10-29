@@ -1,44 +1,126 @@
-import { Request, Response } from 'express';
-import * as authService from '../services/authService';
-import { UserResponse } from '../services/authService';
+import db from '../models'; 
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import 'dotenv/config';
 
-export const register = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Nome, email e password são obrigatórios.' });
+
+export interface UserResponse { 
+    id: number;
+    name: string;
+    email: string;
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+
+
+export const registerUser = async (userData: any): Promise<UserResponse> => {
+    console.log(`[SERVICE] Registando utilizador: ${userData.email}`);
+
+   
+    const existingUser = await db.User.findOne({ where: { email: userData.email } });
+    
+    if (existingUser) {
+        console.warn(`[SERVICE] Tentativa de registo com e-mail duplicado (verificado manualmente): ${userData.email}`);
+        const customError: any = new Error('Este e-mail já está registado.');
+        customError.status = 409; 
+        throw customError;
     }
+    
 
-    console.log(`[AUTH] Tentativa de registo para o e-mail: ${req.body.email}`);
+    try {
+        
+        const newUser = await db.User.create(userData);
 
-    const user: UserResponse = await authService.registerUser({ name, email, password });
-
-    console.log(`[AUTH] Utilizador ${user.email} registado com sucesso.`);
-    return res.status(201).json({ message: 'Utilizador criado com sucesso!', user });
-
-  } catch (error: any) {
-    console.error(`[AUTH] Erro no registo: ${error.message}`);
-    return res.status(error.status || 500).json({ message: error.message || 'Erro interno do servidor.' });
-  }
+        
+        const userResponse: UserResponse = {
+            id: newUser.id,
+            name: newUser.name,
+            email: newUser.email,
+            createdAt: newUser.createdAt,
+            updatedAt: newUser.updatedAt
+        };
+        console.log(`[SERVICE] Utilizador ${newUser.email} registado com ID: ${newUser.id}`);
+        return userResponse;
+    } catch (error: any) {
+       
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            console.warn(`[SERVICE] Tentativa de registo com e-mail duplicado (erro BD): ${userData.email}`);
+            const customError: any = new Error('Este e-mail já está registado.');
+            customError.status = 409; 
+            throw customError;
+        }
+        if (error.name === 'SequelizeValidationError') {
+            console.warn(`[SERVICE] Erro de validação no registo: ${error.message}`);
+             const customError: any = new Error(`Dados de registo inválidos: ${error.message}`);
+            customError.status = 400; 
+            throw customError;
+        }
+        console.error(`[SERVICE] Erro inesperado no registo: ${error.message}`);
+        throw error;
+    }
 };
 
-export const login = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const { email, password } = req.body;
+
+export const loginUser = async (credentials: any): Promise<{ user: UserResponse; token: string }> => {
+    const { email, password } = credentials;
+    console.log(`[SERVICE] Tentativa de login para: ${email}`);
+
     if (!email || !password) {
-        return res.status(400).json({ message: 'E-mail e password são obrigatórios.' });
+        const error: any = new Error('E-mail e palavra-passe são obrigatórios.');
+        error.status = 400; 
+        throw error;
     }
 
-    console.log(`[AUTH] Tentativa de login para o e-mail: ${req.body.email}`);
+    try {
+        console.log(`>>> [SERVICE] Procurando utilizador ${email} (com password)...`);
+        const user = await db.User.scope('withPassword').findOne({ where: { email } });
 
-    const { user, token }: { user: UserResponse; token: string } = await authService.loginUser({ email, password });
+        if (!user || !user.id) { 
+            console.warn(`[SERVICE] Tentativa de login falhada: Utilizador ${email} não encontrado.`);
+            const error: any = new Error('Credenciais inválidas.');
+            error.status = 401; 
+            throw error;
+        }
+         console.log(`>>> [SERVICE] Utilizador ${email} encontrado. ID: ${user.id}`);
 
-    console.log(`[AUTH] Login bem-sucedido para ${user.email}.`);
-    return res.status(200).json({ message: 'Login bem-sucedido!', user, token });
+        console.log(`>>> [SERVICE] Comparando passwords para utilizador ID: ${user.id}...`);
+        const isMatch = await user.comparePassword(password);
 
-  } catch (error: any) {
-    console.error(`[AUTH] Erro no login: ${error.message}`);
-    return res.status(error.status || 500).json({ message: error.message || 'Erro interno do servidor.' });
-  }
+        if (!isMatch) {
+            console.warn(`[SERVICE] Tentativa de login falhada: Password incorreta para ${email}.`);
+            const error: any = new Error('Credenciais inválidas.');
+            error.status = 401;
+            throw error;
+        }
+         console.log(`>>> [SERVICE] Passwords correspondem para utilizador ID: ${user.id}.`);
+
+        const jwtSecret = process.env.JWT_SECRET;
+        if (!jwtSecret) {
+            console.error(">>> [SERVICE] ERRO GRAVE: A variável JWT_SECRET não está definida no .env");
+            throw new Error('Erro na configuração do servidor.');
+        }
+
+        console.log(`>>> [SERVICE] Gerando token JWT para utilizador ID: ${user.id}...`);
+        const token = jwt.sign({ id: user.id }, jwtSecret, { expiresIn: '1d' });
+        console.log(`>>> [SERVICE] Token gerado com sucesso.`);
+
+        const userResponse: UserResponse = {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            createdAt: user.createdAt,
+            updatedAt: user.updatedAt
+        };
+
+        return { user: userResponse, token }; 
+
+    } catch (error: any) {
+        if (error.status) {
+            throw error;
+        }
+        console.error(`[SERVICE] Erro inesperado no login: ${error.message}`);
+        throw new Error('Erro interno do servidor durante o login.');
+    }
 };
 
