@@ -1,103 +1,98 @@
-import Movie, { IMovie } from '../models/Movie';
-import mongoose from 'mongoose';
-
-
-const findMovieAndCheckOwnership = async (movieId: string, userId: string): Promise<IMovie> => {
-    
-    if (!mongoose.Types.ObjectId.isValid(movieId)) {
-        const error: any = new Error('ID do filme inválido.');
-        error.status = 400; 
-        throw error;
-    }
-
-    const movie = await Movie.findById(movieId);
+import db from '../models'; 
+import { Op } from 'sequelize';
+import Movie, { MovieAttributes, MovieCreationAttributes } from '../models/Movie';
+import User from '../models/User'; 
+const findMovieAndCheckOwnership = async (movieId: number, userId: number): Promise<Movie> => {
+    const movie = await db.Movie.findByPk(movieId);
 
     if (!movie) {
+        console.warn(`[SERVICE] Tentativa de acesso a filme inexistente: ID ${movieId}`);
         const error: any = new Error('Filme não encontrado.');
         error.status = 404; 
         throw error;
     }
 
-    
-    if (movie.user.toString() !== userId) {
-        console.warn(`[AUTH] ATENÇÃO: Usuário ${userId} tentando acessar filme ${movieId} de outro usuário.`);
-        const error: any = new Error('Acesso negado. Você não tem permissão para acessar ou modificar este recurso.');
+    if (movie.userId !== userId) {
+        console.warn(`[AUTH] ATENÇÃO: Utilizador ${userId} tentando aceder/modificar filme ${movieId} de outro utilizador (${movie.userId}).`);
+        const error: any = new Error('Acesso negado. Você não tem permissão para aceder ou modificar este recurso.');
         error.status = 403; 
         throw error;
     }
+    console.log(`[SERVICE] Verificação de posse bem-sucedida para filme ${movieId} e utilizador ${userId}.`);
     return movie;
 };
 
-
-
-export const createMovie = async (movieData: Omit<IMovie, 'user' | 'save' | '_id'>, userId: string): Promise<IMovie> => {
-  console.log(`[SERVICE] Criando filme para o usuário: ${userId}`);
-  const movie = new Movie({
+export const createMovie = async (movieData: MovieCreationAttributes, userId: number): Promise<Movie> => {
+  console.log(`[SERVICE] Criando filme para o utilizador ID: ${userId}`);
+  const newMovie = await db.Movie.create({
     ...movieData,
-    user: userId,
+    userId: userId,
   });
-  await movie.save();
-  return movie;
+  console.log(`[SERVICE] Filme "${newMovie.title}" criado com ID: ${newMovie.id}`);
+  return newMovie;
 };
 
+export const getAllMovies = async (userId: number, filters: any): Promise<Movie[]> => {
+  console.log(`[SERVICE] Buscando filmes do utilizador ID: ${userId} com filtros:`, filters);
 
-export const getAllMovies = async (userId: string, filters: any): Promise<IMovie[]> => {
-  console.log(`[SERVICE] Buscando filmes do usuário: ${userId} com filtros:`, filters);
-  const query: any = { user: userId }; 
+  const whereClause: any = { userId: userId };
+
   if (filters.genre) {
-    query.genre = { $regex: filters.genre, $options: 'i' }; 
+    whereClause.genre = { [Op.iLike]: `%${filters.genre}%` };
   }
   if (filters.director) {
-    query.director = { $regex: filters.director, $options: 'i' };
+    whereClause.director = { [Op.iLike]: `%${filters.director}%` };
   }
   if (filters.title) {
-    query.title = { $regex: filters.title, $options: 'i' };
+    whereClause.title = { [Op.iLike]: `%${filters.title}%` };
   }
    if (filters.rating) {
     const ratingNum = Number(filters.rating);
     if (!isNaN(ratingNum)) {
-       query.rating = { $gte: ratingNum }; 
+       whereClause.rating = { [Op.gte]: ratingNum };
     }
   }
    if (filters.year) {
     const yearNum = Number(filters.year);
     if (!isNaN(yearNum)) {
-      query.year = yearNum;
+      whereClause.year = yearNum;
     }
   }
 
-  return Movie.find(query);
+  const movies = await db.Movie.findAll({ where: whereClause });
+  console.log(`[SERVICE] Encontrados ${movies.length} filmes para o utilizador ID: ${userId}`);
+  return movies;
 };
 
-export const getMovieById = async (movieId: string, userId: string): Promise<IMovie> => {
-  console.log(`[SERVICE] Buscando filme por ID: ${movieId} para usuário: ${userId}`);
-
+export const getMovieById = async (movieId: number, userId: number): Promise<Movie> => {
+  console.log(`[SERVICE] Buscando filme ID: ${movieId} para utilizador ID: ${userId}`);
   return findMovieAndCheckOwnership(movieId, userId);
 };
 
-export const updateMovie = async (movieId: string, movieData: Partial<Omit<IMovie, 'user' | 'save' | '_id'>>, userId: string): Promise<IMovie> => {
-  await findMovieAndCheckOwnership(movieId, userId);
+type MovieUpdateData = Partial<Omit<MovieAttributes, 'id' | 'userId' | 'createdAt' | 'updatedAt'>>;
+export const updateMovie = async (movieId: number, movieData: MovieUpdateData, userId: number): Promise<Movie> => {
+  console.log(`[SERVICE] Tentando atualizar filme ID: ${movieId} para utilizador ID: ${userId}`);
+  const movieInstance = await findMovieAndCheckOwnership(movieId, userId);
 
-  console.log(`[SERVICE] Atualizando filme: ${movieId}`);
-  const updatedMovie = await Movie.findByIdAndUpdate(
-    movieId,
-    movieData,
-    { new: true, runValidators: true }
-  );
+  await movieInstance.update(movieData);
+  console.log(`[SERVICE] Filme ID: ${movieId} atualizado com sucesso.`);
 
-  if (!updatedMovie) {
-       const error: any = new Error('Filme não encontrado após tentativa de atualização.');
-       error.status = 404;
-       throw error;
-  }
-  return updatedMovie;
+  return movieInstance;
 };
 
-
-export const deleteMovie = async (movieId: string, userId: string): Promise<void> => {
+export const deleteMovie = async (movieId: number, userId: number): Promise<void> => {
+  console.log(`[SERVICE] Tentando deletar filme ID: ${movieId} para utilizador ID: ${userId}`);
   await findMovieAndCheckOwnership(movieId, userId);
 
-  console.log(`[SERVICE] Deletando filme: ${movieId}`);
-  await Movie.findByIdAndDelete(movieId);
+  const numberOfAffectedRows = await db.Movie.destroy({
+    where: { id: movieId, userId: userId }
+  });
+
+  if (numberOfAffectedRows === 0) {
+      console.error(`[SERVICE] Falha ao deletar filme ID: ${movieId}, nenhuma linha afetada após verificação.`);
+      throw new Error('Falha ao deletar o filme.');
+  }
+
+  console.log(`[SERVICE] Filme ID: ${movieId} deletado com sucesso.`);
 };
 

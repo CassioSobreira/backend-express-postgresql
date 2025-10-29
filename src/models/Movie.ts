@@ -1,48 +1,104 @@
-import mongoose, { Document, Schema } from 'mongoose';
+import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 
-export interface IMovie extends Document {
+export interface MovieAttributes {
+  id?: number;
   title: string;
-  director?: string;
-  year?: number;
-  genre?: string;
-  rating?: number;
-  user: mongoose.Schema.Types.ObjectId; 
+  director?: string | null;
+  year?: number | null;
+  genre?: string | null;
+  rating?: number | null;
+  userId: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-const MovieSchema: Schema = new Schema({
-  title: {
-    type: String,
-    required: [true, 'O título é obrigatório.'],
-    trim: true, 
-  },
-  director: {
-    type: String,
-    trim: true,
-  },
-  year: {
-    type: Number,
-  },
-  genre: {
-    type: String,
-    trim: true,
-  },
-  rating: {
-    type: Number,
-    min: [1, 'A avaliação deve ser no mínimo 1.'],
-    max: [10, 'A avaliação deve ser no máximo 10.'],
-  },
- 
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User', 
-    required: true,
-    index: true, 
-  },
-}, {
-  timestamps: true 
-});
 
-MovieSchema.index({ user: 1, title: 1 });
+export interface MovieCreationAttributes extends Optional<MovieAttributes, 'id' | 'director' | 'year' | 'genre' | 'rating' | 'createdAt' | 'updatedAt'> {}
 
-export default mongoose.model<IMovie>('Movie', MovieSchema);
+class Movie extends Model<MovieAttributes, MovieCreationAttributes> implements MovieAttributes {
+  public id!: number;
+  public title!: string;
+  public director!: string | null;
+  public year!: number | null;
+  public genre!: string | null;
+  public rating!: number | null;
+  public userId!: number;
+
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+
+  public static associate(models: any) {
+    Movie.belongsTo(models.User, {
+      foreignKey: 'userId',
+      as: 'user',
+      onDelete: 'CASCADE',
+    });
+  }
+}
+
+export const initMovie = (sequelize: Sequelize) => {
+  Movie.init(
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      title: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      director: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      year: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+      genre: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      rating: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        validate: {
+          min: 1,
+          max: 10,
+        }
+      },
+      userId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: 'Users',
+          key: 'id',
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE',
+      },
+      createdAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+      },
+      updatedAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP'),
+      },
+    },
+    {
+      sequelize,
+      tableName: 'Movies',
+      modelName: 'Movie',
+      timestamps: true,
+      underscored: false,
+    }
+  );
+  return Movie;
+};
+
+export default Movie;
 
